@@ -10,13 +10,13 @@ Credentials for the OpenSearch domain have been saved in the AWS Systems Manager
 ```bash
 $ export OPENSEARCH_HOST=$(aws ssm get-parameter \
       --name /eksworkshop/$EKS_CLUSTER_NAME/opensearch/host \
-      --region $AWS_REGION | jq .Parameter.Value | tr -d '"')
+      --region $AWS_REGION | jq -r .Parameter.Value)
 $ export OPENSEARCH_USER=$(aws ssm get-parameter \
       --name /eksworkshop/$EKS_CLUSTER_NAME/opensearch/user  \
-      --region $AWS_REGION --with-decryption | jq .Parameter.Value | tr -d '"')
+      --region $AWS_REGION --with-decryption | jq -r .Parameter.Value)
 $ export OPENSEARCH_PASSWORD=$(aws ssm get-parameter \
       --name /eksworkshop/$EKS_CLUSTER_NAME/opensearch/password \
-      --region $AWS_REGION --with-decryption | jq .Parameter.Value | tr -d '"')
+      --region $AWS_REGION --with-decryption | jq -r .Parameter.Value)
 $ export OPENSEARCH_DASHBOARD_FILE=~/environment/eks-workshop/modules/observability/opensearch/opensearch-dashboards.ndjson
 ```
 
@@ -73,12 +73,12 @@ Password: <password>
 
 Point your browser to the OpenSearch dashboard URL above and use the credentials to login.
 
-![OpenSearch login](./assets/opensearch-login.webp)
+![OpenSearch login](/docs/observability/opensearch/opensearch-login.webp)
 
 Select the Global tenant as shown below. Tenants in OpenSearch can be used to safely share resources such as index patterns, visualizations and dashboards.
 
-![OpenSearch login confirmation](./assets/opensearch-confirm-2.webp)
+![OpenSearch login confirmation](/docs/observability/opensearch/opensearch-confirm-2.webp)
 
 You should see the two dashboards (for Kubernetes events and pod logs) that were loaded in the earlier step. The dashboards are currently empty since there is no data in OpenSearch yet. Keep this browser tab open or save the dashboard URLs. We will return to the dashboards in the next sections.
 
-![OpenSearch login confirmation](./assets/opensearch-dashboard-launch.webp)
+![OpenSearch login confirmation](/docs/observability/opensearch/opensearch-dashboard-launch.webp)

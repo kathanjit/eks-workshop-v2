@@ -38,7 +38,7 @@ variable "cluster_proportional_autoscaler_version" {
   description = "The version of cluster-proportional-autoscaler to use"
   type        = string
   # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-proportional-autoscaler
-  default = "1.8.9"
+  default = "1.10.3"
 }
 
 variable "cluster_proportional_autoscaler_chart_version" {
@@ -46,4 +46,9 @@ variable "cluster_proportional_autoscaler_chart_version" {
   type        = string
   # renovate-helm: depName=cluster-proportional-autoscaler registryUrl=https://kubernetes-sigs.github.io/cluster-proportional-autoscaler
   default = "1.1.0"
+}
+# tflint-ignore: terraform_unused_declarations
+variable "inbound_cidrs" {
+  description = "CIDR range to allowlist for inbound traffic"
+  type        = string
 }

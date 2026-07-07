@@ -3,30 +3,32 @@
 set -e
 
 # renovate: depName=kubernetes/kubernetes
-kubectl_version='1.30.4'
+kubectl_version='1.33.7'
 
 # renovate: depName=helm/helm
-helm_version='3.15.4'
+helm_version='3.20.0'
 
 # renovate: depName=eksctl-io/eksctl
-eksctl_version='0.190.0'
+eksctl_version='0.222.0'
 
 kubeseal_version='0.18.4'
 
 # renovate: depName=mikefarah/yq
-yq_version='4.44.3'
+yq_version='4.52.2'
 
 # renovate: depName=fluxcd/flux2
-flux_version='2.3.0'
+flux_version='2.7.5'
 
 # renovate: depName=argoproj/argo-cd
-argocd_version='2.12.3'
+argocd_version='2.14.21'
 
 # renovate: depName=hashicorp/terraform
-terraform_version='1.9.5'
+terraform_version='1.14.4'
 
-# renovate: depName=aws/amazon-ec2-instance-selector
-ec2_instance_selector_version='2.4.1'
+ec2_instance_selector_version='3.1.1'
+
+# renovate: depName=hatoo/oha
+oha_version='1.13.0'
 
 download () {
   url=$1
@@ -84,7 +86,7 @@ mv ./linux-${arch_name}/helm /usr/local/bin
 rm -rf linux-${arch_name}/ helm.tar.gz
 
 # eksctl
-download "https://github.com/weaveworks/eksctl/releases/download/v$eksctl_version/eksctl_Linux_${arch_name}.tar.gz" "eksctl.tar.gz"
+download "https://github.com/eksctl-io/eksctl/releases/download/v${eksctl_version}/eksctl_Linux_${arch_name}.tar.gz" "eksctl.tar.gz"
 tar zxf eksctl.tar.gz
 chmod +x eksctl
 mv ./eksctl /usr/local/bin
@@ -115,6 +117,9 @@ chmod +x flux
 mv ./flux /usr/local/bin
 rm -rf flux.tar.gz
 
+# git-remote
+pip install git-remote-s3
+
 # terraform
 download "https://releases.hashicorp.com/terraform/${terraform_version}/terraform_${terraform_version}_linux_${arch_name}.zip" "terraform.zip"
 unzip -o -q terraform.zip -d /tmp
@@ -131,6 +136,11 @@ mv ./argocd /usr/local/bin/argocd
 download "https://github.com/aws/amazon-ec2-instance-selector/releases/download/v${ec2_instance_selector_version}/ec2-instance-selector-linux-${arch_name}" "ec2-instance-selector"
 chmod +x ./ec2-instance-selector
 mv ./ec2-instance-selector /usr/local/bin/ec2-instance-selector
+
+# oha
+download "https://github.com/hatoo/oha/releases/download/v${oha_version}/oha-linux-${arch_name}" "oha"
+chmod +x ./oha
+mv ./oha /usr/local/bin
 
 REPOSITORY_OWNER=${REPOSITORY_OWNER:-"aws-samples"}
 REPOSITORY_NAME=${REPOSITORY_NAME:-"eks-workshop-v2"}

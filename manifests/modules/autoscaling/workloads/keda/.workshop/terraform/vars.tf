@@ -45,5 +45,11 @@ variable "keda_chart_version" {
   description = "The chart version of keda to use"
   type        = string
   # renovate-helm: depName=keda registryUrl=https://kedacore.github.io/charts
-  default = "2.15.1"
+  default = "2.19.0"
+}
+
+# tflint-ignore: terraform_unused_declarations
+variable "inbound_cidrs" {
+  description = "CIDR range to allowlist for inbound traffic"
+  type        = string
 }

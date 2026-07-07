@@ -34,9 +34,8 @@ variable "resources_precreated" {
   type        = bool
 }
 
-variable "nginx_chart_version" {
-  description = "The chart version of nginx to use"
+# tflint-ignore: terraform_unused_declarations
+variable "inbound_cidrs" {
+  description = "CIDR range to allowlist for inbound traffic"
   type        = string
-  # renovate-helm: depName=nginx registryUrl=https://charts.bitnami.com/bitnami
-  default = "18.1.11"
 }

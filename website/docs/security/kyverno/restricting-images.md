@@ -3,36 +3,37 @@ title: "Restricting Image Registries"
 sidebar_position: 73
 ---
 
-Using container images form unknown sources on your EKS Clusters, that may not be a scanned for Common Vulnerabilities and Exposure (CVE), represent a risk factor for the overall security of your environment. When choosing container images sources, you need to ensure that they are originated from Trusted Registries, in order to reduce the threat exposure and exploits of vulnerabilities. Some larger organizations also have Security Guidelines that limit containers to use images from their own hosted private image registry.
+Using container images from unknown sources in your EKS clusters can pose significant security risks, especially if these images haven't been scanned for Common Vulnerabilities and Exposures (CVEs). To mitigate these risks and reduce the threat of vulnerability exploitation, it's crucial to ensure that container images originate from trusted registries. Many organizations also have security guidelines that mandate the use of images exclusively from their own hosted private image registries.
 
-In this section, you will see how Kyverno can help you run secure container workloads by restricting the Image Registries that can be used in your cluster.
+In this section, we'll explore how Kyverno can help you run secure container workloads by restricting the image registries that can be used in your cluster.
 
-As seen in previous labs, you can run Pods with images from any available registry, so run a sample Pod using the default registry that points to `docker.io`.
+As demonstrated in previous labs, you can deploy workloads with images from any available registry. Let's start by creating a sample Deployment using the default registry, which points to `docker.io`:
 
-```bash
-$ kubectl run nginx --image=nginx
+```bash hook=registry-setup
+$ kubectl create deployment nginx-public --image=nginx
+deployment.apps/nginx-public created
 
-NAME    READY   STATUS    RESTARTS   AGE
-nginx   1/1     Running   0          47s
-
-$ kubectl describe pod nginx | grep Image
-    Image:          nginx
-    Image ID:       docker.io/library/nginx@sha256:4c0fdaa8b6341bfdeca5f18f7837462c80cff90527ee35ef185571e1c327beac
+$ kubectl get deployment nginx-public -o jsonpath='{.spec.template.spec.containers[0].image}'
+nginx
 ```
 
-In this case, it was just an `nginx` base image being pulled from the Public Registry. A bad actor could pull any vulnerable image and run on the EKS Cluster, exploiting resources allocated in the cluster.
+In this case, we've referenced a basic `nginx` image from the public registry. However, a malicious actor could potentially deploy a vulnerable image and run it on the EKS cluster, potentially exploiting the cluster's resources.
 
-Next, as a best practice you'll define a policy that will restrict the use of any unauthorized Image Registry, and rely only on specified Trusted Registries.
+To implement best practices, we'll define a policy that restricts the use of unauthorized image registries and relies only on specified trusted registries.
 
-In this lab, you will be using [Amazon ECR Public Gallery](https://public.ecr.aws/) as the Trusted Registry, blocking any containers that use Images hosted in other registries to run. Below is a sample Kyverno Policy to restrict the image pull for this use-case.
+For this lab, we'll use the [Amazon ECR Public Gallery](https://public.ecr.aws/) as our trusted registry, blocking any Deployments that reference images hosted in other registries. Here's a sample Kyverno policy to restrict image pulling for this use case:
 
-```file
-manifests/modules/security/kyverno/images/restrict-registries.yaml
-```
+::yaml{file="manifests/modules/security/kyverno/images/restrict-registries.yaml" paths="spec.validationFailureAction,spec.background,spec.rules.0.match,spec.rules.0.validate.allowExistingViolations,spec.rules.0.validate.pattern"}
 
-> The above doesn't restrict usage of InitContainers or Ephemeral Containers to the referred repository.
+1. `validationFailureAction: Enforce` blocks non-compliant Deployments from being created or updated
+2. `background: true` applies the policy to existing resources in addition to new ones
+3. `match.any.resources.kinds: [Deployment]` applies the policy to all Deployment resources cluster-wide
+4. `allowExistingViolations: false` ensures updates to already-violating Deployments are also blocked, closing the gap where a pre-existing non-compliant Deployment could otherwise be updated without enforcement
+5. `validate.pattern` enforces that all container images in the Deployment pod template must originate from the `public.ecr.aws/*` registry, blocking any Deployments that reference images from unauthorized registries
 
-Apply the above policy with the command below.
+> Note: This policy targets Deployments. InitContainers and Ephemeral Containers are not covered by this pattern.
+
+Let's apply this policy using the following command:
 
 ```bash
 $ kubectl apply -f ~/environment/eks-workshop/modules/security/kyverno/images/restrict-registries.yaml
@@ -40,31 +41,30 @@ $ kubectl apply -f ~/environment/eks-workshop/modules/security/kyverno/images/re
 clusterpolicy.kyverno.io/restrict-image-registries created
 ```
 
-Try to run another sample Pod using the default image from the public Registry.
+Now, let's attempt to create a new Deployment using an image from the public registry:
 
-```bash expectError=true
-$ kubectl run nginx-public --image=nginx
+```bash expectError=true hook=registry-blocked
+$ kubectl create deployment nginx-blocked --image=nginx
+error: failed to create deployment: admission webhook "validate.kyverno.svc-fail" denied the request:
 
-Error from server: admission webhook "validate.kyverno.svc-fail" denied the request:
-
-resource Pod/default/nginx-public was blocked due to the following policies
+resource Deployment/default/nginx-blocked was blocked due to the following policies
 
 restrict-image-registries:
   validate-registries: 'validation error: Unknown Image registry. rule validate-registries
-    failed at path /spec/containers/0/image/'
+    failed at path /spec/template/spec/containers/0/image/'
 ```
 
-The Pod failed to run and presented an output stating Pod Creation was blocked due to our previously created Kyverno Policy.
+As we can see, the Deployment was blocked due to our previously created Kyverno policy.
 
-Now try to run a sample Pod using the `nginx` Image hosted in the Trusted Registry, previously defined in the Policy (public.ecr.aws).
+Let's now try to create a Deployment using the `nginx` image hosted in our trusted registry (public.ecr.aws), which we defined in the policy:
 
 ```bash
-$ kubectl run nginx-ecr --image=public.ecr.aws/nginx/nginx
-pod/nginx-public created
+$ kubectl create deployment nginx-ecr --image=public.ecr.aws/nginx/nginx
+deployment.apps/nginx-ecr created
 ```
 
-The Pod was successfully created!
+Success! The Deployment was created successfully because its pod template references an image from the trusted registry.
 
-You have seen how you can block Images from public registries to run on your EKS Clusters, and restrict only allowed Image Repositories. One can further go ahead, and allow only private repositories as a Security Best Practice.
+We've now seen how we can block Deployments that reference images from public registries and restrict usage to only allowed image repositories. As a further security best practice, you might consider allowing only private repositories.
 
-> Don't remove the running Pods created in this task as we will use them for the next lab.
+> Note: Don't remove the running Deployments created in this task, as we'll use them in the next lab.

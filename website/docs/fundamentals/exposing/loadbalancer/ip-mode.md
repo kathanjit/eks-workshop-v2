@@ -7,7 +7,7 @@ As mentioned previously, the NLB we have created is operating in "instance mode"
 
 The AWS Load Balancer Controller also supports creating NLBs operating in "IP mode". In this mode, the AWS NLB sends traffic directly to the Kubernetes pods behind the service, eliminating the need for an extra network hop through the worker nodes in the Kubernetes cluster. IP target mode supports pods running on both AWS EC2 instances and AWS Fargate.
 
-![IP mode](./assets/ip-mode.webp)
+![IP mode](/docs/fundamentals/exposing/loadbalancer/ip-mode.webp)
 
 The previous diagram explains how application traffic flows differently when the target group mode is instance and IP.
 
@@ -43,7 +43,7 @@ Service/ui-nlb
 Apply the manifest with kustomize:
 
 ```bash
-$ kubectl apply -k ~/environment/eks-workshop/modules/exposing/load-balancer/ip-mode
+$ kubectl kustomize ~/environment/eks-workshop/modules/exposing/load-balancer/ip-mode | envsubst | kubectl apply -f -
 ```
 
 It will take a few minutes for the configuration of the load balancer to be updated. Run the following command to ensure the annotation is updated:
@@ -143,5 +143,6 @@ As expected we now have 3 targets, matching the number of replicas in the ui Dep
 If you want to wait to make sure the application still functions the same, run the following command. Otherwise you can proceed to the next module.
 
 ```bash timeout=240
-$ wait-for-lb $(kubectl get service -n ui ui-nlb -o jsonpath="{.status.loadBalancer.ingress[*].hostname}{'\n'}")
+$ curl --head -X GET --retry 30 --retry-all-errors --retry-delay 15 --connect-timeout 30 --max-time 60 \
+  -k $(kubectl get service -n ui ui-nlb -o jsonpath="{.status.loadBalancer.ingress[*].hostname}")
 ```

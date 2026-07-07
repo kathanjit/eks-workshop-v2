@@ -3,7 +3,7 @@ title: "Application Metrics"
 sidebar_position: 50
 ---
 
-import dashboard from './assets/cw-dashboard.webp';
+import dashboard from '@site/static/docs/observability/container-insights/cw-dashboard.webp';
 
 In this section we'll look at gaining insight into metrics exposed by our workloads and visualizing those metrics using Amazon CloudWatch Insights Prometheus. Some examples of these metrics could be:
 
@@ -117,7 +117,7 @@ spec:
       mountPath: /scripts
   initContainers:
   - name: setup
-    image: public.ecr.aws/aws-containers/retail-store-sample-utils:load-gen.0.4.0
+    image: public.ecr.aws/aws-containers/retail-store-sample-utils:load-gen.1.2.1
     command:
     - bash
     args:
@@ -138,11 +138,11 @@ Open the CloudWatch console and navigate to the Dashboards section:
 
 Choose the dashboard **Order-Service-Metrics** to review the panels within the dashboard:
 
-![Application Metrics](./assets/dashboard-metrics.webp)
+![Application Metrics](/docs/observability/container-insights/dashboard-metrics.webp)
 
 We can see how the dashboard was configured to query CloudWatch by hovering over the title of the "Orders by Product" panel and clicking the "Edit" button:
 
-![Edit Panel](./assets/dashboard-edit-metrics.webp)
+![Edit Panel](/docs/observability/container-insights/dashboard-edit-metrics.webp)
 
 The query used to create this panel is displayed at the bottom of the page:
 

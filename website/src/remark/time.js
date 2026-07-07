@@ -1,14 +1,16 @@
 import { visit } from "unist-util-visit";
 const fs = require("fs");
-import * as yamljs from "yamljs";
 import * as path from "path";
 import { globSync } from "glob";
 import getReadingTime from "reading-time";
 
-const timingDataString = fs.readFileSync(`./test-durations.json`, {
-  encoding: "utf8",
-  flag: "r",
-});
+const timingDataString = fs.readFileSync(
+  `${process.cwd()}/test-durations.json`,
+  {
+    encoding: "utf8",
+    flag: "r",
+  },
+);
 
 const timingData = JSON.parse(timingDataString);
 
@@ -25,12 +27,27 @@ const plugin = (options) => {
         return;
       }
 
-      let defaultAttributes = { estimatedLabExecutionTimeMinutes: "0" };
+      const locale = process.env.DOCUSAURUS_CURRENT_LOCALE;
 
-      let attributes = { ...defaultAttributes, ...node.attributes };
+      const defaultAttributes = { estimatedLabExecutionTimeMinutes: "0" };
+
+      const attributes = { ...defaultAttributes, ...node.attributes };
 
       const filePath = vfile.history[0];
-      const relativePath = path.relative(`${vfile.cwd}/docs`, filePath);
+      const projectDir = process.cwd();
+      const docsDir = `${projectDir}/docs`;
+      let relativePath;
+
+      if (locale !== "en") {
+        const i18nDocsDir = `${projectDir}/i18n/${locale}/docusaurus-plugin-content-docs/current`;
+        if (filePath.startsWith(i18nDocsDir)) {
+          relativePath = path.relative(i18nDocsDir, filePath);
+        } else {
+          relativePath = path.relative(docsDir, filePath);
+        }
+      } else {
+        relativePath = path.relative(docsDir, filePath);
+      }
 
       if (attributes.estimatedLabExecutionTimeMinutes === "0") {
         attributes.estimatedLabExecutionTimeMinutes = calculateLabExecutionTime(
@@ -39,7 +56,7 @@ const plugin = (options) => {
         );
       }
 
-      let totalTime =
+      const totalTime =
         Math.ceil(
           ((calculateReadingTime(filePath) +
             parseInt(attributes.estimatedLabExecutionTimeMinutes)) *
@@ -49,26 +66,12 @@ const plugin = (options) => {
 
       const jsxNode = {
         type: "mdxJsxFlowElement",
-        name: "p",
-        attributes: [],
-        children: [
+        name: "RequiredTime",
+        attributes: [
           {
-            type: "mdxJsxTextElement",
-            name: "b",
-            attributes: [],
-            children: [
-              {
-                type: "text",
-                value: "Estimated time required:",
-              },
-            ],
-            data: {
-              _mdxExplicitJsx: true,
-            },
-          },
-          {
-            type: "text",
-            value: ` ${totalTime} minutes`,
+            type: "mdxJsxAttribute",
+            name: "totalTime",
+            value: totalTime,
           },
         ],
       };

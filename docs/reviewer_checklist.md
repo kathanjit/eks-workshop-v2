@@ -5,7 +5,7 @@ This is the reviewer checklist for pull requests, over time as many of these che
 ## Pull Request hygiene
 
 - [ ] Pull request has an appropriate title (see [releases](./releases.md))
-- [ ] Pull request has an appropriate `content` label
+- [ ] Pull request has an appropriate `content` label, otherwise use `content/other`
 - [ ] Pull request has been assigned to the correct GitHub Milestone
 - [ ] All review checks are passing
 
@@ -21,6 +21,7 @@ See style guide for expanded explanations.
 - [ ] Any references to external manifests are pinned to a version
 - [ ] `$EKS_CLUSTER_NAME` is used instead of hard-coded cluster names, including referencing other infrastructure that may use the cluster name
 - [ ] Avoided use of interactive `kubectl exec` or multiple terminal windows (or tests skipped)
+- [ ] Appropriately secured any public load balancers or other endpoints
 
 ## AWS infrastructure
 

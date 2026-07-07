@@ -5,22 +5,26 @@ sidebar_position: 20
 
 Let's create an additional Service that provisions a load balancer with the following configuration:
 
-::yaml{file="manifests/modules/exposing/load-balancer/nlb/nlb.yaml" paths="spec.type,spec.ports,spec.selector"}
+::yaml{file="manifests/modules/exposing/load-balancer/nlb/nlb.yaml" paths="metadata.annotations,spec.type,spec.ports,spec.selector"}
 
-1. This `Service` will create a Network Load Balancer
-2. The NLB will listens on port 80 and forwards connections to the `ui` Pods on port 8080
-3. Here we express which pods should be added as target for this service using labels on the pods
+1. Annotations configure the AWS Load Balancer Controller to provision an internet-facing NLB. The `load-balancer-source-ranges` annotation restricts inbound traffic to specific CIDR ranges
+2. This `Service` will create a Network Load Balancer
+3. The NLB will listens on port 80 and forwards connections to the `ui` Pods on port 8080
+4. Here we express which pods should be added as target for this service using labels on the pods
 
 Apply this configuration:
 
 ```bash timeout=180 hook=add-lb hookTimeout=430
-$ kubectl apply -k ~/environment/eks-workshop/modules/exposing/load-balancer/nlb
+$ kubectl kustomize ~/environment/eks-workshop/modules/exposing/load-balancer/nlb | envsubst | kubectl apply -f -
 ```
 
 Let's inspect the Service resources for the `ui` application again:
 
 ```bash
 $ kubectl get service -n ui
+NAME     TYPE           CLUSTER-IP      EXTERNAL-IP                                                            PORT(S)        AGE
+ui       ClusterIP      172.16.69.215   <none>                                                                 80/TCP         7m38s
+ui-nlb   LoadBalancer   172.16.77.201   k8s-ui-uinlb-e1c1ebaeb4-28a0d1a388d43825.elb.us-west-2.amazonaws.com   80:30549/TCP   105s
 ```
 
 We see two separate resources, with the new `ui-nlb` entry being of type `LoadBalancer`. Most importantly note it has an "external IP" value, this is the DNS entry that can be used to access our application from outside the Kubernetes cluster.
@@ -61,7 +65,12 @@ $ aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalance
                 "LoadBalancerAddresses": []
             }
         ],
-        "IpAddressType": "ipv4"
+        "SecurityGroups": [
+            "sg-03688f7b9bef3fc57",
+            "sg-09743892e52e82896"
+        ],
+        "IpAddressType": "ipv4",
+        "EnablePrefixForIpv6SourceNat": "off"
     }
 ]
 ```
@@ -81,32 +90,47 @@ $ aws elbv2 describe-target-health --target-group-arn $TARGET_GROUP_ARN
     "TargetHealthDescriptions": [
         {
             "Target": {
-                "Id": "i-06a12e62c14e0c39a",
-                "Port": 31338
+                "Id": "i-03d705cd2404b089d",
+                "Port": 30549
             },
-            "HealthCheckPort": "31338",
+            "HealthCheckPort": "30549",
             "TargetHealth": {
                 "State": "healthy"
+            },
+            "AdministrativeOverride": {
+                "State": "no_override",
+                "Reason": "AdministrativeOverride.NoOverride",
+                "Description": "No override is currently active on target"
             }
         },
         {
             "Target": {
-                "Id": "i-088e21d0af0f2890c",
-                "Port": 31338
+                "Id": "i-0d33c31067a053ece",
+                "Port": 30549
             },
-            "HealthCheckPort": "31338",
+            "HealthCheckPort": "30549",
             "TargetHealth": {
                 "State": "healthy"
+            },
+            "AdministrativeOverride": {
+                "State": "no_override",
+                "Reason": "AdministrativeOverride.NoOverride",
+                "Description": "No override is currently active on target"
             }
         },
         {
             "Target": {
-                "Id": "i-0fe2202d18299816f",
-                "Port": 31338
+                "Id": "i-0c221e809e435b965",
+                "Port": 30549
             },
-            "HealthCheckPort": "31338",
+            "HealthCheckPort": "30549",
             "TargetHealth": {
                 "State": "healthy"
+            },
+            "AdministrativeOverride": {
+                "State": "no_override",
+                "Reason": "AdministrativeOverride.NoOverride",
+                "Description": "No override is currently active on target"
             }
         }
     ]
@@ -122,18 +146,20 @@ You can also inspect the NLB in the console by clicking this link:
 Get the URL from the Service resource:
 
 ```bash
-$ kubectl get service -n ui ui-nlb -o jsonpath="{.status.loadBalancer.ingress[*].hostname}{'\n'}"
-k8s-ui-uinlb-a9797f0f61.elb.us-west-2.amazonaws.com
+$ ADDRESS=$(kubectl get service -n ui ui-nlb -o jsonpath="{.status.loadBalancer.ingress[*].hostname}")
+$ echo "http://${ADDRESS}"
+http://k8s-ui-uinlb-e1c1ebaeb4-28a0d1a388d43825.elb.us-west-2.amazonaws.com
 ```
 
 To wait until the load balancer has finished provisioning you can run this command:
 
 ```bash
-$ wait-for-lb $(kubectl get service -n ui ui-nlb -o jsonpath="{.status.loadBalancer.ingress[*].hostname}{'\n'}")
+$ curl --head -X GET --retry 30 --retry-all-errors --retry-delay 15 --connect-timeout 30 --max-time 60 \
+  -k $(kubectl get service -n ui ui-nlb -o jsonpath="{.status.loadBalancer.ingress[*].hostname}")
 ```
 
 Now that our application is exposed to the outside world, lets try to access it by pasting that URL in your web browser. You will see the UI from the web store displayed and will be able to navigate around the site as a user.
 
-<Browser url="http://k8s-ui-uinlb-a9797f0f61.elb.us-west-2.amazonaws.com">
+<Browser url="http://k8s-ui-uinlb-e1c1ebaeb4-28a0d1a388d43825.elb.us-west-2.amazonaws.com">
 <img src={require('@site/static/img/sample-app-screens/home.webp').default}/>
 </Browser>

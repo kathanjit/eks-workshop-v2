@@ -5,8 +5,12 @@
     ":rebaseStalePrs",
     ":automergeStableNonMajor"
   ],
-  "schedule": ["on the first day of the month"],
+  "schedule": ["* * 7-14 * *"],
   "enabledManagers": ["custom.regex", "github-actions", "terraform", "npm"],
+  "labels": ["content/other"],
+  "minimumReleaseAge": "28 days",
+  "internalChecksFilter": "strict",
+  "prCreation": "not-pending",
   "packageRules": [
     {
       "matchManagers": ["github-actions"],
@@ -22,12 +26,12 @@
     },
     {
       "matchDepNames": ["kubernetes/kubernetes"],
-      "allowedVersions": "/^v1.30.[0-9]+$/"
+      "allowedVersions": "/^v1.33.[0-9]+$/"
     },
     {
       "matchDepNames": ["kubernetes/autoscaler"],
       "extractVersion": "^cluster-autoscaler-(?<version>.*)$",
-      "allowedVersions": "/^1.30.[0-9]+$/"
+      "allowedVersions": "/^1.33.[0-9]+$/"
     },
     {
       "automerge": true,
@@ -38,6 +42,11 @@
     {
       "matchPackagePatterns": ["^@docusaurus"],
       "enabled": false
+    },
+    {
+      "matchFileNames": ["lab/scripts/installer.sh"],
+      "groupName": "IDE binaries",
+      "matchUpdateTypes": ["minor", "patch"]
     }
   ],
   "customManagers": [

@@ -38,12 +38,18 @@ variable "cluster_autoscaler_version" {
   description = "The version of cluster-autoscaler to use"
   type        = string
   # renovate: datasource=github-releases depName=kubernetes/autoscaler
-  default = "1.30.2"
+  default = "1.33.4"
 }
 
 variable "cluster_autoscaler_chart_version" {
   description = "The chart version of cluster-autoscaler to use"
   type        = string
   # renovate-helm: depName=cluster-autoscaler registryUrl=https://kubernetes.github.io/autoscaler
-  default = "9.37.0"
+  default = "9.55.0"
+}
+
+# tflint-ignore: terraform_unused_declarations
+variable "inbound_cidrs" {
+  description = "CIDR range to allowlist for inbound traffic"
+  type        = string
 }

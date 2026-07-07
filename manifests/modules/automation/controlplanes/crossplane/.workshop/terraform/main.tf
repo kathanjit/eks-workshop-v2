@@ -42,7 +42,7 @@ locals {
 
 module "upbound_irsa_aws" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "5.44.0"
+  version = "5.60.0"
 
   role_name_prefix           = "${var.addon_context.eks_cluster_id}-ddb-upbound-"
   policy_name_prefix         = "${var.addon_context.eks_cluster_id}-ddb-upbound-"
@@ -100,6 +100,18 @@ resource "kubectl_manifest" "upbound_aws_provider_config" {
   depends_on = [kubectl_manifest.upbound_aws_provider]
 }
 
+module "iam_assumable_role_carts" {
+  source                        = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
+  version                       = "5.60.0"
+  create_role                   = true
+  role_name                     = "${var.addon_context.eks_cluster_id}-carts-crossplane"
+  provider_url                  = var.addon_context.eks_oidc_issuer_url
+  role_policy_arns              = [aws_iam_policy.carts_dynamo.arn]
+  oidc_fully_qualified_subjects = ["system:serviceaccount:carts:carts"]
+
+  tags = var.tags
+}
+
 resource "aws_iam_policy" "carts_dynamo" {
   name        = "${var.addon_context.eks_cluster_id}-carts-dynamo"
   path        = "/"
@@ -125,7 +137,7 @@ EOF
 
 module "eks_blueprints_addons" {
   source  = "aws-ia/eks-blueprints-addons/aws"
-  version = "1.16.3"
+  version = "1.23.0"
 
   enable_aws_load_balancer_controller = true
   aws_load_balancer_controller = {
@@ -138,21 +150,44 @@ module "eks_blueprints_addons" {
   cluster_endpoint  = var.addon_context.aws_eks_cluster_endpoint
   cluster_version   = var.eks_cluster_version
   oidc_provider_arn = var.addon_context.eks_oidc_provider_arn
+
+  observability_tag = null
 }
 
-resource "time_sleep" "blueprints_addons_sleep" {
-  depends_on = [
-    module.eks_blueprints_addons
-  ]
+resource "time_sleep" "wait" {
+  depends_on = [module.eks_blueprints_addons]
 
-  create_duration  = "15s"
-  destroy_duration = "15s"
+  create_duration = "10s"
 }
 
-resource "kubectl_manifest" "nlb" {
-  yaml_body = templatefile("${path.module}/templates/nlb.yaml", {
+resource "kubernetes_manifest" "ui_nlb" {
+  depends_on = [time_sleep.wait]
 
-  })
-
-  depends_on = [time_sleep.blueprints_addons_sleep]
+  manifest = {
+    "apiVersion" = "v1"
+    "kind"       = "Service"
+    "metadata" = {
+      "name"      = "ui-nlb"
+      "namespace" = "ui"
+      "annotations" = {
+        "service.beta.kubernetes.io/aws-load-balancer-type"            = "external"
+        "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
+        "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "instance"
+        "service.beta.kubernetes.io/load-balancer-source-ranges"       = var.inbound_cidrs
+      }
+    }
+    "spec" = {
+      "type" = "LoadBalancer"
+      "ports" = [{
+        "port"       = 80
+        "targetPort" = 8080
+        "name"       = "http"
+      }]
+      "selector" = {
+        "app.kubernetes.io/name"      = "ui"
+        "app.kubernetes.io/instance"  = "ui"
+        "app.kubernetes.io/component" = "service"
+      }
+    }
+  }
 }

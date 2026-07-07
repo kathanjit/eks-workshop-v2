@@ -2,7 +2,7 @@ data "aws_partition" "current" {}
 
 module "eks_blueprints_addons" {
   source  = "aws-ia/eks-blueprints-addons/aws"
-  version = "1.16.3"
+  version = "1.23.0"
 
   cluster_name      = var.addon_context.eks_cluster_id
   cluster_endpoint  = var.addon_context.aws_eks_cluster_endpoint
@@ -14,11 +14,13 @@ module "eks_blueprints_addons" {
     role_name   = "${var.addon_context.eks_cluster_id}-alb-controller"
     policy_name = "${var.addon_context.eks_cluster_id}-alb-controller"
   }
+
+  observability_tag = null
 }
 
 module "iam_assumable_role_keda" {
   source                        = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
-  version                       = "5.44.0"
+  version                       = "5.60.0"
   create_role                   = true
   role_name                     = "${var.addon_context.eks_cluster_id}-keda"
   provider_url                  = var.addon_context.eks_oidc_issuer_url
@@ -28,7 +30,15 @@ module "iam_assumable_role_keda" {
   tags = var.tags
 }
 
+resource "time_sleep" "wait" {
+  depends_on = [module.eks_blueprints_addons]
+
+  create_duration = "20s"
+}
+
 resource "kubernetes_manifest" "ui_alb" {
+  depends_on = [time_sleep.wait]
+
   manifest = {
     "apiVersion" = "networking.k8s.io/v1"
     "kind"       = "Ingress"
@@ -39,10 +49,11 @@ resource "kubernetes_manifest" "ui_alb" {
         "alb.ingress.kubernetes.io/scheme"           = "internet-facing"
         "alb.ingress.kubernetes.io/target-type"      = "ip"
         "alb.ingress.kubernetes.io/healthcheck-path" = "/actuator/health/liveness"
+        "alb.ingress.kubernetes.io/inbound-cidrs"    = var.inbound_cidrs
       }
     }
     "spec" = {
-      ingressClassName = "alb",
+      "ingressClassName" = "alb",
       "rules" = [{
         "http" = {
           paths = [{

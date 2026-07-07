@@ -1,14 +1,12 @@
 ---
-title: "Large Language Models with Ray Serve"
-sidebar_position: 30
+title: "Large Language Models with vLLM"
+sidebar_position: 10
 chapter: true
-sidebar_custom_props: { "beta": true }
-description: "Use Inferentia to accelerate deep learning inference workloads on Amazon Elastic Kubernetes Service."
+sidebar_custom_props: { "module": true }
+description: "Use AWS Neuron to accelerate deep learning inference workloads on Amazon Elastic Kubernetes Service."
 ---
 
-:::danger
-This module is not supported at AWS events or in AWS-vended accounts through Workshop Studio. This module is only supported for clusters created through the "[In your AWS account](/docs/introduction/setup/your-account)" steps.
-:::
+::required-time
 
 :::tip Before you start
 Prepare your environment for this section:
@@ -20,16 +18,21 @@ $ prepare-environment aiml/chatbot
 This will make the following changes to your lab environment:
 
 - Installs Karpenter in the Amazon EKS cluster
-- Creates an IAM Role for the Pods to use
+- Installs the AWS Load Balancer Controller in the Amazon EKS cluster
 
 You can view the Terraform that applies these changes [here](https://github.com/VAR::MANIFESTS_OWNER/VAR::MANIFESTS_REPOSITORY/tree/VAR::MANIFESTS_REF/manifests/modules/aiml/chatbot/.workshop/terraform).
 
 :::
 
-With pre-training on 2 trillion tokens of text and code, the [Meta Llama-2-13b](https://llama.meta.com/#inside-the-model) chat model is one of the largest and most powerful large language models (LLMs) available today.
+[Mistral 7B](https://mistral.ai/en/news/announcing-mistral-7b) is an open-source large language model (LLM) with 7.3 billion parameters designed to provide a balance of performance and efficiency. Unlike larger models that require massive computational resources, Mistral 7B offers impressive capabilities in a more deployable package. It excels at text generation, completion, information extraction, data analysis, and complex reasoning tasks while maintaining practical resource requirements.
 
-From its natural language processing and text generation capabilities to handling inference and training workloads, the creation of Llama2 represents some of the newest advances in GenAI Technology.
+In this module, we'll explore how to deploy and efficiently serve Mistral 7B on Amazon EKS. You'll learn how to:
 
-This section will focus not only on harnessing the power of Llama-2 but also on gaining insights into the intricacies of deploying LLMs efficiently on EKS.
+1. Set up the necessary infrastructure for accelerated ML workloads
+2. Deploy the model using AWS Trainium accelerators
+3. Configure and scale the model inference endpoint
+4. Integrate a simple chat interface with the deployed model
 
-For deploying and scaling LLMs, this lab will utilize AWS Inferentia instances within the [Inf2](https://aws.amazon.com/machine-learning/inferentia/) family, such as `Inf2.24xlarge` and `Inf2.48xlarge`. Additionally, the chatbot inference workloads will utilize the [Ray Serve](https://docs.ray.io/en/latest/serve/index.html) module for building online inference APIs and streamlining the deployment of machine learning models, as well as the [Gradio UI](https://www.gradio.app/) for accessing the Llama2 chatbot.
+For accelerating model inference, we'll leverage AWS Trainium through the [Trn1](https://aws.amazon.com/ai/machine-learning/trainium/) instance family. These purpose-built accelerators are optimized for deep learning workloads and offer significant performance improvements for model inference compared to standard CPU-based solutions.
+
+Our inference architecture will utilize [vLLM](https://github.com/vllm-project/vllm), a high-throughput and memory-efficient inference engine specifically designed for LLMs. vLLM provides an OpenAI-compatible API endpoint that makes it easy to integrate with existing applications.

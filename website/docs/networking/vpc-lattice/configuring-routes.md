@@ -8,7 +8,7 @@ In this section we will show how to use Amazon VPC Lattice for advanced traffic 
 Let's deploy a modified version of the `checkout` microservice with an added prefix _"Lattice"_ in the shipping options. Let's deploy this new version in a new namespace (`checkoutv2`) using Kustomize.
 
 ```bash
-$ kubectl apply -k ~/environment/eks-workshop/modules/networking/vpc-lattice/abtesting/
+$ kubectl kustomize ~/environment/eks-workshop/modules/networking/vpc-lattice/abtesting/ | envsubst | kubectl apply -f -
 $ kubectl rollout status deployment/checkout -n checkoutv2
 ```
 
@@ -22,9 +22,18 @@ checkout-854cd7cd66-s2blp   1/1     Running   0          26s
 
 Now let's demonstrate how weighted routing works by creating `HTTPRoute` resources. First we'll create a `TargetGroupPolicy` that tells Lattice how to properly perform health checks on our checkout service:
 
-```file
-manifests/modules/networking/vpc-lattice/target-group-policy/target-group-policy.yaml
-```
+::yaml{file="manifests/modules/networking/vpc-lattice/target-group-policy/target-group-policy.yaml" paths="spec.targetRef,spec.healthCheck,spec.healthCheck.intervalSeconds,spec.healthCheck.timeoutSeconds,spec.healthCheck.healthyThresholdCount,spec.healthCheck.unhealthyThresholdCount,spec.healthCheck.path,spec.healthCheck.port,spec.healthCheck.protocol,spec.healthCheck.statusMatch"}
+
+1. `targetRef` applies this policy to the `checkout` Service
+2. The settings in the `healthCheck` section defines how VPC Lattice monitors service health
+3. `intervalSeconds: 10` : Check every 10 seconds
+4. `timeoutSeconds: 1` : 1-second timeout per check
+5. `healthyThresholdCount: 3` : 3 consecutive successes = healthy
+6. `unhealthyThresholdCount: 2` : 2 consecutive failures = unhealthy
+7. `path: "/health"`: Health check endpoint path
+8. `port: 8080` : Health check endpoint port
+9. `protocol: HTTP` : Health check endpoint protocol
+10. `statusMatch: "200"` : Expects HTTP 200 response
 
 Apply this resource:
 
@@ -34,9 +43,11 @@ $ kubectl apply -k ~/environment/eks-workshop/modules/networking/vpc-lattice/tar
 
 Now create the Kubernetes `HTTPRoute` route that distributes 75% traffic to `checkoutv2` and remaining 25% traffic to `checkout`:
 
-```file
-manifests/modules/networking/vpc-lattice/routes/checkout-route.yaml
-```
+::yaml{file="manifests/modules/networking/vpc-lattice/routes/checkout-route.yaml" paths="spec.parentRefs.0,spec.rules.0.backendRefs.0,spec.rules.0.backendRefs.1"}
+
+1. `parentRefs` attaches this `HTTPRoute` route to the `http` listener on the gateway named `${EKS_CLUSTER_NAME}`
+2. This `backendRefs` rule sends `25%` of the traffic to the `checkout` Service in the `checkout` namespace on port `80`
+3. This `backendRefs` rule sends `75%` of the traffic to the `checkout` Service in the `checkoutv2` namespace on port `80`
 
 Apply this resource:
 
@@ -49,10 +60,10 @@ This creation of the associated resources may take 2-3 minutes, run the followin
 
 ```bash wait=10 timeout=400
 $ kubectl wait -n checkout --timeout=3m \
-  --for=jsonpath='{.status.parents[-1:].conditions[-1:].reason}'=ResolvedRefs httproute/checkoutroute
+  --for=jsonpath='{.metadata.annotations.application-networking\.k8s\.aws\/lattice-assigned-domain-name}' httproute/checkoutroute
 ```
 
-Once completed you will find the `HTTPRoute`'s DNS name from `HTTPRoute` status (highlighted here on the `message` line):
+Once completed you will find the `HTTPRoute`'s DNS name from `HTTPRoute` annotation `application-networking.k8s.aws/lattice-assigned-domain-name`:
 
 ```bash
 $ kubectl describe httproute checkoutroute -n checkout
@@ -64,19 +75,10 @@ Annotations:  application-networking.k8s.aws/lattice-assigned-domain-name:
 API Version:  gateway.networking.k8s.io/v1beta1
 Kind:         HTTPRoute
 ...
-Status:
-  Parents:
-    Conditions:
-      Last Transition Time:  2023-06-12T16:42:08Z
-      Message:               DNS Name: checkoutroute-checkout-0d8e3f4604a069e36.7d67968.vpc-lattice-svcs.us-east-2.on.aws
-      Reason:                ResolvedRefs
-      Status:                True
-      Type:                  ResolvedRefs
-...
 ```
 
 Now you can see the associated Service created in the [VPC Lattice console](https://console.aws.amazon.com/vpc/home#Services) under the Lattice resources.
-![CheckoutRoute Service](assets/checkoutroute.webp)
+![CheckoutRoute Service](/docs/networking/vpc-lattice/checkoutroute.webp)
 
 :::tip Traffic is now handled by Amazon VPC Lattice
 Amazon VPC Lattice can now automatically redirect traffic to this service from any source, including different VPCs! You can also take full advantage of other VPC Lattice [features](https://aws.amazon.com/vpc/lattice/features/).

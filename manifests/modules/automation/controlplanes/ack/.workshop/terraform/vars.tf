@@ -33,3 +33,15 @@ variable "resources_precreated" {
   description = "Have expensive resources been created already"
   type        = bool
 }
+
+variable "dynamo_ack_version" {
+  description = "The version of Dynamo ACK to use"
+  type        = string
+  # renovate: datasource=github-releases depName=aws-controllers-k8s/dynamodb-controller
+  default = "1.7.1"
+}
+# tflint-ignore: terraform_unused_declarations
+variable "inbound_cidrs" {
+  description = "CIDR range to allowlist for inbound traffic"
+  type        = string
+}

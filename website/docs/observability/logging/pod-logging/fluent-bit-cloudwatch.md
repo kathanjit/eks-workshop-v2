@@ -14,6 +14,18 @@ $ kubectl rollout status deployment/ui \
 deployment "ui" successfully rolled out
 ```
 
+Meanwhile, if you check the Fluent Bit DaemonSet logs, you will observe that a new log stream is created under the existing log group for the `ui` component.
+
+```bash hook=pods-log
+$ kubectl logs daemonset.apps/aws-for-fluent-bit -n kube-system
+...
+[2025/04/15 12:40:10] [ info] [filter:kubernetes:kubernetes.0]  token updated
+[2025/04/15 12:40:10] [ info] [input:tail:tail.0] inotify_fs_add(): inode=16895961 watch_fd=12 name=/var/log/containers/ui-8564fc5cfb-qb7td_ui_ui-4ace14944409ee785708c9031b4c2243bfa065ffe0cd320e219131aa33541a1e.log
+[2025/04/15 12:40:11] [ info] [output:cloudwatch_logs:cloudwatch_logs.0] Creating log stream ui-8564fc5cfb-qb7td.ui in log group /aws/eks/fluentbit-cloudwatch/workload/ui
+[2025/04/15 12:40:11] [ info] [output:cloudwatch_logs:cloudwatch_logs.0] Created log stream ui-8564fc5cfb-qb7td.ui
+
+```
+
 Now we can check that our `ui` component is creating logs by directly using `kubectl logs`:
 
 ```bash
@@ -44,12 +56,12 @@ Open the CloudWatch Logs console to check these logs are appearing:
 
 Filter for **fluentbit-cloudwatch** to find the log groups created by Fluent Bit:
 
-![CloudWatch Log Group](./assets/log-group.webp)
+![CloudWatch Log Group](/docs/observability/logging/pod-logging/log-group.webp)
 
 Select `/aws/eks/fluentbit-cloudwatch/workload/ui` to view the log streams, each one corresponds to an individual pod:
 
-![CloudWatch Log Stream](./assets/log-streams.webp)
+![CloudWatch Log Stream](/docs/observability/logging/pod-logging/log-streams.webp)
 
 You can expand one of the log entries to see the full JSON payload:
 
-![Pod logs](./assets/logs.webp)
+![Pod logs](/docs/observability/logging/pod-logging/logs.webp)

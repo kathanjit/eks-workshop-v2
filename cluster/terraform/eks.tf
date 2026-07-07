@@ -1,13 +1,20 @@
+locals {
+  remote_node_cidr = var.remote_network_cidr
+  remote_pod_cidr  = var.remote_pod_cidr
+}
+
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.0"
+  version = "~> 21.0"
 
-  cluster_name                             = var.cluster_name
-  cluster_version                          = var.cluster_version
-  cluster_endpoint_public_access           = true
+  name                                     = var.cluster_name
+  kubernetes_version                       = var.cluster_version
+  endpoint_public_access                   = true
   enable_cluster_creator_admin_permissions = true
 
-  cluster_addons = {
+  addons = {
+    coredns    = {}
+    kube-proxy = {}
     vpc-cni = {
       before_compute = true
       most_recent    = true
@@ -28,8 +35,58 @@ module "eks" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
-  create_cluster_security_group = false
-  create_node_security_group    = false
+  create_security_group      = false
+  create_node_security_group = false
+  security_group_additional_rules = {
+    hybrid-node = {
+      cidr_blocks = [local.remote_node_cidr]
+      description = "Allow all traffic from remote node/pod network"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "all"
+      type        = "ingress"
+    }
+
+    hybrid-pod = {
+      cidr_blocks = [local.remote_pod_cidr]
+      description = "Allow all traffic from remote node/pod network"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "all"
+      type        = "ingress"
+    }
+  }
+
+  node_security_group_additional_rules = {
+    hybrid_node_rule = {
+      cidr_blocks = [local.remote_node_cidr]
+      description = "Allow all traffic from remote node/pod network"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "all"
+      type        = "ingress"
+    }
+
+    hybrid_pod_rule = {
+      cidr_blocks = [local.remote_pod_cidr]
+      description = "Allow all traffic from remote node/pod network"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "all"
+      type        = "ingress"
+    }
+  }
+
+
+  remote_network_config = {
+    remote_node_networks = {
+      cidrs = [local.remote_node_cidr]
+    }
+    # Required if running webhooks on Hybrid nodes
+    remote_pod_networks = {
+      cidrs = [local.remote_pod_cidr]
+    }
+  }
 
   eks_managed_node_groups = {
     default = {

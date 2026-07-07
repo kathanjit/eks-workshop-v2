@@ -4,10 +4,24 @@ module "kyverno" {
 
   description      = "Kyverno Kubernetes Native Policy Management"
   chart            = "kyverno"
-  chart_version    = "3.0.0"
+  chart_version    = var.kyverno_chart_version
   namespace        = "kyverno"
   create_namespace = true
   repository       = "https://kyverno.github.io/kyverno/"
+
+  set = [
+    {
+      name  = "webhooksCleanup.enabled"
+      value = "true"
+    }
+  ]
+
+  # disable_webhooks passes --no-hooks to helm uninstall, skipping the
+  # webhooksCleanup job which hangs when Kyverno is being torn down.
+  # cleanup.sh uninstalls both Helm releases directly before Terraform runs,
+  # so Terraform destroy finds nothing to do and completes immediately.
+  wait             = false
+  disable_webhooks = true
 }
 
 module "kyverno_policies" {
@@ -16,7 +30,7 @@ module "kyverno_policies" {
 
   description   = "Kyverno policy library"
   chart         = "kyverno-policies"
-  chart_version = "3.0.0"
+  chart_version = var.kyverno_chart_version
   namespace     = "kyverno"
   repository    = "https://kyverno.github.io/kyverno/"
   values = [
@@ -25,18 +39,7 @@ module "kyverno_policies" {
         EOT
   ]
 
-  depends_on = [module.kyverno]
-}
-
-module "policy_reporter" {
-  source  = "aws-ia/eks-blueprints-addon/aws"
-  version = "1.1.1"
-
-  description   = "Kyverno Policy Reporter which shows policy reports in a graphical web-based front end."
-  chart         = "policy-reporter"
-  chart_version = "1.3.0"
-  namespace     = "kyverno"
-  repository    = "https://kyverno.github.io/policy-reporter/"
+  disable_webhooks = true
 
   depends_on = [module.kyverno]
 }

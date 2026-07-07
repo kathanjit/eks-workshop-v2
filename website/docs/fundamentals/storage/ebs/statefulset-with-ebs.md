@@ -5,7 +5,7 @@ sidebar_position: 30
 
 Now that we understand [StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) and [Dynamic Volume Provisioning](https://kubernetes.io/docs/concepts/storage/dynamic-provisioning/), let's change our MySQL DB on the Catalog microservice to provision a new EBS volume to store database files persistent.
 
-![MySQL with EBS](./assets/mysql-ebs.webp)
+![MySQL with EBS](/docs/fundamentals/storage/ebs/mysql-ebs.webp)
 
 Utilizing Kustomize, we'll do two things:
 
@@ -18,17 +18,17 @@ Why are we not updating the existing StatefulSet? The fields we need to update a
 
 Here in the new catalog database StatefulSet:
 
-```file
-manifests/modules/fundamentals/storage/ebs/statefulset-mysql.yaml
-```
+::yaml{file="manifests/modules/fundamentals/storage/ebs/statefulset-mysql.yaml" paths="spec.volumeClaimTemplates,spec.volumeClaimTemplates.0.spec.storageClassName,spec.volumeClaimTemplates.0.spec.resources.requests.storage"}
 
-Notice the `volumeClaimTemplates` field which specifies the instructs Kubernetes to utilize Dynamic Volume Provisioning to create a new EBS Volume, a [PersistentVolume (PV)](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) and a [PersistentVolumeClaim (PVC)](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims) all automatically.
+1. The `volumeClaimTemplates` field instructs Kubernetes to utilize Dynamic Volume Provisioning to create a new EBS Volume, a [PersistentVolume (PV)](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) and a [PersistentVolumeClaim (PVC)](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims) all automatically.
+2. Specify the `storageClassName` as `ebs-csi-default-sc` which is the name of the default storage class
+3. We are requesting a `30GB` EBS volume
 
 This is how we'll re-configure the catalog component itself to use the new StatefulSet:
 
 ```kustomization
-modules/fundamentals/storage/ebs/deployment.yaml
-Deployment/catalog
+modules/fundamentals/storage/ebs/configMap.yaml
+ConfigMap/catalog
 ```
 
 Apply the changes and wait for the new Pods to be rolled out:
@@ -96,7 +96,7 @@ $ aws ec2 describe-volumes \
 
 If you prefer you can also check it via the [AWS console](https://console.aws.amazon.com/ec2/home#Volumes), just look for the EBS volumes with the tag of key `kubernetes.io/created-for/pvc/name` and value of `data-catalog-mysql-ebs-0`:
 
-![EBS Volume AWS Console Screenshot](./assets/ebsVolumeScrenshot.webp)
+![EBS Volume AWS Console Screenshot](/docs/fundamentals/storage/ebs/ebsVolumeScrenshot.webp)
 
 If you'd like to inspect the container shell and check out the newly EBS volume attached to the Linux OS, run this instructions to run a shell command into the `catalog-mysql-ebs` container. It'll inspect the file-systems that you have mounted:
 
